@@ -21651,6 +21651,12 @@ void Player::ResummonPetTemporaryUnSummonedIfAny()
     if (GetPetGuid())
         return;
 
+    // owner position can be transiently invalid (taxi/transport transitions);
+    // spawning a pet from it puts the pet at the grid corner and the following
+    // visibility update stalls the map thread - retry once the position is sane
+    if (!MaNGOS::IsValidMapCoord(GetPositionX(), GetPositionY(), GetPositionZ(), GetOrientation()))
+        return;
+
     Pet* NewPet = new Pet;
     if (!NewPet->LoadPetFromDB(this, NewPet->GetPetSpawnPosition(this), 0, m_temporaryUnsummonedPetNumber, true))
         delete NewPet;
