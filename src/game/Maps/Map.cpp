@@ -2760,6 +2760,11 @@ void Map::PlayDirectSoundToMap(uint32 soundId, uint32 zoneId /*=0*/) const
  */
 bool Map::IsInLineOfSight(float srcX, float srcY, float srcZ, float destX, float destY, float destZ, bool ignoreM2Model) const
 {
+    // garbage endpoints (transiently invalid unit positions) must not build
+    // vmap rays — a non-finite ray can overflow the BIH traversal stack
+    if (!MaNGOS::IsValidMapCoord(srcX, srcY, srcZ) || !MaNGOS::IsValidMapCoord(destX, destY, destZ))
+        return true; // treat as unobstructed; callers cope with a wrong LoS far better than a crash
+
     return VMAP::VMapFactory::createOrGetVMapManager()->isInLineOfSight(GetId(), srcX, srcY, srcZ, destX, destY, destZ, ignoreM2Model)
            && m_dyn_tree.isInLineOfSight(srcX, srcY, srcZ, destX, destY, destZ, ignoreM2Model);
 }
@@ -2770,6 +2775,10 @@ bool Map::IsInLineOfSight(float srcX, float srcY, float srcZ, float destX, float
  */
 bool Map::GetHitPosition(float srcX, float srcY, float srcZ, float& destX, float& destY, float& destZ, float modifyDist) const
 {
+    // see IsInLineOfSight — never build vmap rays from invalid coordinates
+    if (!MaNGOS::IsValidMapCoord(srcX, srcY, srcZ) || !MaNGOS::IsValidMapCoord(destX, destY, destZ))
+        return false;
+
     // at first check all static objects
     float tempX, tempY, tempZ = 0.0f;
     bool result0 = VMAP::VMapFactory::createOrGetVMapManager()->getObjectHitPos(GetId(), srcX, srcY, srcZ, destX, destY, destZ, tempX, tempY, tempZ, modifyDist);

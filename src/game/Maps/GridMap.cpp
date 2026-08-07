@@ -827,6 +827,13 @@ int TerrainInfo::UnrefGrid(const uint32& x, const uint32& y)
 
 float TerrainInfo::GetHeightStatic(float x, float y, float z, bool useVmaps/*=true*/, float maxSearchDist/*=DEFAULT_HEIGHT_SEARCH*/) const
 {
+    // invalid/non-finite coordinates (transiently held by units during
+    // teleport/transport transitions) must not reach the vmap BIH traversal:
+    // a garbage ray can overflow its fixed-size traversal stack (observed
+    // SIGSEGV with corrupted stack in BIH::intersectRay at 3800 playerbots)
+    if (!MaNGOS::IsValidMapCoord(x, y) || !std::isfinite(z) || !std::isfinite(maxSearchDist))
+        return VMAP_INVALID_HEIGHT_VALUE;
+
     float mapHeight = VMAP_INVALID_HEIGHT_VALUE;            // Store Height obtained by maps
     float vmapHeight = VMAP_INVALID_HEIGHT_VALUE;           // Store Height obtained by vmaps (in "corridor" of z (or slightly above z)
 
