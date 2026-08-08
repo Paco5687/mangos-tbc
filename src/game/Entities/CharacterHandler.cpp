@@ -533,6 +533,12 @@ void WorldSession::HandleCharCreateOpcode(WorldPacket& recv_data)
 
     pNewChar->SetAtLoginFlag(AT_LOGIN_FIRST);               // First login
 
+    // clear any orphaned child rows left at this guid by an earlier failed
+    // create — leftover character_action rows collide with the initial save's
+    // INSERTs and silently roll the whole creation back (observed in
+    // production as self-perpetuating guid poisoning breaking all creation)
+    CharacterDatabase.PExecute("DELETE FROM character_action WHERE guid = '%u'", pNewChar->GetGUIDLow());
+
     // Player created, save it now
     pNewChar->SaveToDB();
     charcount += 1;
