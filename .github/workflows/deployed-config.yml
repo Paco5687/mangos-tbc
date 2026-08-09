@@ -1,0 +1,94 @@
+# Build the configuration we ACTUALLY run (fork-specific).
+#
+# Why this exists alongside the inherited upstream workflows:
+#
+# Upstream ubuntu.yml builds `-DBUILD_PLAYERBOT=ON` — the *deprecated in-tree*
+# playerbot. Our server runs `-DBUILD_PLAYERBOTS=ON` with
+# `-DBUILD_DEPRECATED_PLAYERBOT=OFF`, i.e. the separate PlayerBots module,
+# cloned into src/modules/PlayerBots and gitignored from this repo.
+#
+# So upstream CI compiles a configuration nobody runs, and would NOT catch a
+# break in the module — which is exactly where most of our own code lives
+# (the LLM chat pipeline, and NpcDialogue for issue #48).
+#
+# This workflow compiles only. It never touches the live server: rebuilding
+# and restarting mangosd drops the world for ~10 minutes plus bot
+# re-population, and that stays a deliberate human decision.
+#
+# INSTALL: copy to .github/workflows/deployed-config.yml in the mangos-tbc fork.
+name: Deployed config build
+
+on:
+  push:
+    branches: [master, "fix/**", "feat/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  BUILD_TYPE: Release
+  BUILD_DIR: ${{github.workspace}}/bin/builddir
+  REPO_DIR: ${{github.workspace}}
+  # keep in step with src/modules/PlayerBots on the server
+  PLAYERBOTS_REPO: Paco5687/mangos_playerbots
+  PLAYERBOTS_REF: fix/perfmon-thread-safety
+
+jobs:
+  build:
+    name: Build with the PlayerBots module
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout core
+        uses: actions/checkout@v4
+        with:
+          path: ${{env.REPO_DIR}}
+
+      # The module is a separate public repo, gitignored from the core tree —
+      # without this the BUILD_PLAYERBOTS=ON build cannot resolve its sources.
+      - name: Checkout PlayerBots module
+        uses: actions/checkout@v4
+        with:
+          repository: ${{env.PLAYERBOTS_REPO}}
+          ref: ${{env.PLAYERBOTS_REF}}
+          path: src/modules/PlayerBots
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake libssl-dev \
+            libmysqlclient-dev libbz2-dev zlib1g-dev
+
+      - name: Install Boost
+        uses: MarkusJx/install-boost@v2.6.0
+        id: install-boost
+        with:
+          boost_version: 1.81.0
+          platform_version: 22.04
+
+      - name: Configure
+        env:
+          BOOST_ROOT: ${{steps.install-boost.outputs.BOOST_ROOT}}
+        run: |
+          cmake -B ${{env.BUILD_DIR}} -S ${{env.REPO_DIR}} \
+            -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} \
+            -DCMAKE_C_COMPILER_LAUNCHER=sccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
+            -DPCH=ON \
+            -DBUILD_GAME_SERVER=ON \
+            -DBUILD_LOGIN_SERVER=ON \
+            -DBUILD_EXTRACTORS=ON \
+            -DBUILD_METRICS=ON \
+            -DBUILD_AHBOT=ON \
+            -DBUILD_PLAYERBOTS=ON \
+            -DBUILD_DEPRECATED_PLAYERBOT=OFF
+
+      - name: Build
+        run: cmake --build ${{env.BUILD_DIR}} --config ${{env.BUILD_TYPE}} --parallel
+
+      - name: sccache stats
+        run: sccache --show-stats
