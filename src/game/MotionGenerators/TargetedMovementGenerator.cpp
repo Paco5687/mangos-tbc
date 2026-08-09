@@ -583,6 +583,12 @@ bool ChaseMovementGenerator::DispatchSplineToPosition(Unit& owner, float x, floa
 
 void ChaseMovementGenerator::CutPath(Unit& owner, PointsArray& path)
 {
+    // The chase target can be invalidated between dispatch and path cutting
+    // (death/despawn under multithreaded map updates with thousands of bots
+    // chasing) — observed as a null deref crash at GetCombinedCombatReach.
+    if (!this->i_target.isValid() || !this->i_target.getTarget())
+        return;
+
     if (this->i_offset != 0.f) // need to cut path until most distant viable point
     {
 #ifdef ENABLE_PLAYERBOTS
