@@ -40,6 +40,7 @@
 #ifdef ENABLE_PLAYERBOTS
 #include "playerbot/playerbot.h"
 #include "playerbot/RandomPlayerbotMgr.h"
+#include "playerbot/NpcDialogue.h"
 #endif
 
 bool WorldSession::CheckChatMessage(std::string& msg, bool addon/* = false*/)
@@ -212,6 +213,13 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
             {
                 _player->GetPlayerbotMgr()->HandleCommand(type, msg, lang);
             }
+
+            // Townsfolk within a few yards may answer a player (issue #48).
+            // Real players only, named NPCs only, nearest one, rate limited --
+            // all enforced inside the module. Never blocks: a generation
+            // request is dispatched off-thread and spoken from the tick.
+            if (type == CHAT_MSG_SAY || type == CHAT_MSG_YELL)
+                sNpcDialogue.OnPlayerChat(_player, msg, lang);
 #endif
 
             if (type == CHAT_MSG_SAY)
