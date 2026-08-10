@@ -592,6 +592,7 @@ void World::LoadConfigSettings(bool reload)
     setConfigMinMax(CONFIG_UINT32_MIN_PETITION_SIGNS, "MinPetitionSigns", 9, 0, 9);
 
     setConfig(CONFIG_UINT32_GM_LOGIN_STATE,                 "GM.LoginState",                2);
+    setConfigMinMax(CONFIG_FLOAT_GM_LOGIN_SPEED,           "GM.LoginSpeed",             0.0f, 0.0f, 10.0f);
     setConfig(CONFIG_UINT32_GM_VISIBLE_STATE,               "GM.Visible",                   2);
     setConfig(CONFIG_UINT32_GM_ACCEPT_TICKETS,              "GM.AcceptTickets",             2);
     setConfig(CONFIG_UINT32_GM_LEVEL_ACCEPT_TICKETS,        "GM.AcceptTicketsLevel",        2);

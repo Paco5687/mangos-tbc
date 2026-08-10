@@ -19627,6 +19627,19 @@ void Player::SendInitialPacketsBeforeAddToMap()
 
 void Player::SendInitialPacketsAfterAddToMap(bool reconnect)
 {
+    // GM convenience (fork): persistent .modify speed across logins. When
+    // GM.LoginSpeed > 1 and the session outranks a player, run, backwalk and
+    // swim speeds are restored on every map entry — no retyping after logout.
+    {
+        float gmSpeed = sWorld.getConfig(CONFIG_FLOAT_GM_LOGIN_SPEED);
+        if (gmSpeed > 1.0f && IsGameMaster())   // follows .gm on/off, so the Patron walks honestly
+        {
+            SetSpeedRate(MOVE_RUN, gmSpeed, true);
+            SetSpeedRate(MOVE_RUN_BACK, gmSpeed, true);
+            SetSpeedRate(MOVE_SWIM, gmSpeed, true);
+        }
+    }
+
     // update zone
     uint32 newzone, newarea;
     GetZoneAndAreaId(newzone, newarea);
