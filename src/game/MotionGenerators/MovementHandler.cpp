@@ -167,6 +167,16 @@ void WorldSession::HandleMoveWorldportAckOpcode()
         GetPlayer()->Relocate(loc.coord_x, loc.coord_y, loc.coord_z, loc.orientation);
     auto lambda = [this, loc, old_loc, mEntry, mInstance](Map* map)
     {
+        // This runs later, on a map worker thread, after being queued onto the
+        // destination map's Messager -- and the session can lose its player in
+        // between (logout, disconnect, kick). Every line below dereferences
+        // GetPlayer()/_player, so without this the first one segfaults. Seen in
+        // the wild on a realm with thousands of bots teleporting and logging
+        // out continuously: crash at this exact line, via Messager<Map>::Execute
+        // from Map::Update on MapUpdater::WorkerThread.
+        if (!GetPlayer())
+            return;
+
         if (GenericTransport* transport = map->GetTransport(GetPlayer()->m_teleportTransport))
         {
             if (transport->GetMapId() == loc.mapid)
