@@ -2285,20 +2285,26 @@ bool ChatHandler::HandleCameraWatchCommand(char* args)
     if (!spectator->IsGameMaster())
         spectator->SetGameMaster(true);
     spectator->SetGMVisible(false);
+    spectator->SetCanFly(true);
 
-    if (!spectator->IsInMap(subject) ||
-        !spectator->IsWithinDist(subject, 250.0f, false))
+    // Far sight needs the same MAP, not proximity: the camera attaches to
+    // the subject's cell and keeps it streamed at any range. So the body
+    // relocates only on a map change, lands AT the subject's own position
+    // (guaranteed standable - v1 parked 30y underground before fly could
+    // protect the fall, and every bind dropped the spectator into the void
+    // on a disconnect loop), and then simply stays behind as the subject
+    // walks away, out of every frame that matters.
+    if (!spectator->IsInMap(subject))
     {
         spectator->TeleportTo(subject->GetMapId(),
                               subject->GetPositionX(), subject->GetPositionY(),
-                              subject->GetPositionZ() - 30.0f,
+                              subject->GetPositionZ() + 0.5f,
                               subject->GetOrientation());
         PSendSysMessage("camera relocating toward %s; repeat to bind the view",
                         subject->GetName());
         return true;
     }
 
-    spectator->SetCanFly(true);
     spectator->GetCamera().SetView(subject);
     PSendSysMessage("camera now viewing %s", subject->GetName());
     return true;
