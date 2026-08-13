@@ -355,6 +355,8 @@ class ChatHandler
         bool HandleGMListIngameCommand(char* args);
         bool HandleGMMountUpCommand(char* args);
         bool HandleGMVisibleCommand(char* args);
+        bool HandleCameraWatchCommand(char* args);
+        bool HandleCameraResetCommand(char* args);
 
         bool HandleGoCommand(char* args);
         bool HandleGoCreatureCommand(char* args);

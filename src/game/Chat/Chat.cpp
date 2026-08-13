@@ -293,6 +293,18 @@ ChatCommand* ChatHandler::getCommandTable()
         { nullptr,          0,                  false, nullptr,                                        "", nullptr }
     };
 
+    // Expedition TV (issue #44): a console-driven far-sight cameraman. The
+    // spectator's client camera is bound to a subject server-side - no
+    // keystrokes, no /follow, and the spectator's body is parked underground
+    // out of frame, which client-side GM invisibility can never achieve
+    // (a client always renders its own character).
+    static ChatCommand cameraCommandTable[] =
+    {
+        { "watch",          SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleCameraWatchCommand,         "", nullptr },
+        { "reset",          SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleCameraResetCommand,         "", nullptr },
+        { nullptr,          0,                  false, nullptr,                                        "", nullptr }
+    };
+
     static ChatCommand gmCommandTable[] =
     {
         { "chat",           SEC_ADMINISTRATOR,  false, &ChatHandler::HandleGMChatCommand,              "", nullptr },
@@ -964,6 +976,7 @@ ChatCommand* ChatHandler::getCommandTable()
         { "channel",        SEC_MODERATOR,      false, nullptr,                                        "", channelCommandTable  },
         { "debug",          SEC_MODERATOR,      true,  nullptr,                                        "", debugCommandTable    },
         { "event",          SEC_GAMEMASTER,     false, nullptr,                                        "", eventCommandTable    },
+        { "camera",         SEC_ADMINISTRATOR,  true,  nullptr,                                        "", cameraCommandTable   },
         { "gm",             SEC_ADMINISTRATOR,  true,  nullptr,                                        "", gmCommandTable       },
         { "honor",          SEC_GAMEMASTER,     false, nullptr,                                        "", honorCommandTable    },
         { "go",             SEC_MODERATOR,      false, nullptr,                                        "", goCommandTable       },

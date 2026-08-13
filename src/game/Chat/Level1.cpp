@@ -2259,6 +2259,61 @@ bool ChatHandler::ModifyMountCommandHelper(Player* target, char* args)
     return false;
 }
 
+// .camera watch <spectator> <subject> - bind the spectator's client camera to
+// the subject via far sight. Two calls converge across maps: the first parks
+// the spectator's body 30y under the subject (out of every frame; fly stops
+// the fall, GM state stops everything else), the second binds the view. The
+// worldservice director re-issues on its own tick, so convergence is free.
+// When the subject despawns or logs out the core resets the view itself and
+// the next directive rebinds.
+bool ChatHandler::HandleCameraWatchCommand(char* args)
+{
+    Player* spectator = nullptr;
+    if (!ExtractPlayerTarget(&args, &spectator))
+        return false;
+    Player* subject = nullptr;
+    if (!ExtractPlayerTarget(&args, &subject))
+        return false;
+    if (spectator == subject)
+    {
+        SendSysMessage("a camera cannot film itself");
+        SetSentErrorMessage(true);
+        return false;
+    }
+
+    // the lens must never be seen and never die
+    if (!spectator->IsGameMaster())
+        spectator->SetGameMaster(true);
+    spectator->SetGMVisible(false);
+
+    if (!spectator->IsInMap(subject) ||
+        !spectator->IsWithinDist(subject, 250.0f, false))
+    {
+        spectator->TeleportTo(subject->GetMapId(),
+                              subject->GetPositionX(), subject->GetPositionY(),
+                              subject->GetPositionZ() - 30.0f,
+                              subject->GetOrientation());
+        PSendSysMessage("camera relocating toward %s; repeat to bind the view",
+                        subject->GetName());
+        return true;
+    }
+
+    spectator->SetCanFly(true);
+    spectator->GetCamera().SetView(subject);
+    PSendSysMessage("camera now viewing %s", subject->GetName());
+    return true;
+}
+
+bool ChatHandler::HandleCameraResetCommand(char* args)
+{
+    Player* spectator = nullptr;
+    if (!ExtractPlayerTarget(&args, &spectator))
+        return false;
+    spectator->GetCamera().ResetView();
+    PSendSysMessage("camera view returned to %s", spectator->GetName());
+    return true;
+}
+
 bool ChatHandler::HandleSetViewCommand(char* /*args*/)
 {
     if (Unit* unit = getSelectedUnit())
