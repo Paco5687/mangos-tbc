@@ -529,7 +529,30 @@ void GenericTransport::UpdatePassengerPosition(WorldObject* passenger)
     CalculatePassengerPosition(x, y, z, &o);
     if (!MaNGOS::IsValidMapCoord(x, y, z))
     {
-        sLog.outError("[TRANSPORTS] Object %s [guid %u] has invalid position on transport.", passenger->GetName(), passenger->GetGUIDLow());
+        // A passenger with a corrupt local offset used to be left aboard in
+        // that state, so this fired for the same unit on every update tick,
+        // forever - and the unit itself stayed glued to the transport,
+        // unusable. Playerbots feed the passenger list server-side (a real
+        // client computes its own offsets), so a bad write here had no way
+        // to heal. Rebuild the offset from where the passenger actually
+        // stands instead: if that is a sane world position, it becomes a
+        // sane local offset. Ejecting would be cleaner still, but we are
+        // inside iteration over the passenger set.
+        float wx = passengerUnit->GetPositionX(), wy = passengerUnit->GetPositionY(),
+              wz = passengerUnit->GetPositionZ(), wo = passengerUnit->GetOrientation();
+        sLog.outError("[TRANSPORTS] Object %s [guid %u] has invalid position on transport %s: "
+                      "offset {%f, %f, %f} world {%f, %f, %f}%s.",
+                      passenger->GetName(), passenger->GetGUIDLow(), GetName(),
+                      passengerUnit->GetTransOffsetX(), passengerUnit->GetTransOffsetY(),
+                      passengerUnit->GetTransOffsetZ(), wx, wy, wz,
+                      MaNGOS::IsValidMapCoord(wx, wy, wz) ? ", rebuilding offset from world position" : "");
+        if (!MaNGOS::IsValidMapCoord(wx, wy, wz))
+            return;
+        CalculatePassengerOffset(wx, wy, wz, &wo);
+        passengerUnit->m_movementInfo.t_pos.x = wx;
+        passengerUnit->m_movementInfo.t_pos.y = wy;
+        passengerUnit->m_movementInfo.t_pos.z = wz;
+        passengerUnit->m_movementInfo.t_pos.o = wo;
         return;
     }
     switch (passenger->GetTypeId())
