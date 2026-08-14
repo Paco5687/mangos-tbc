@@ -2266,6 +2266,60 @@ bool ChatHandler::ModifyMountCommandHelper(Player* target, char* args)
 // worldservice director re-issues on its own tick, so convergence is free.
 // When the subject despawns or logs out the core resets the view itself and
 // the next directive rebinds.
+// .conduct status <name> [name...] - live persona state, one parseable line
+// per name, for the worldservice Conductor. The characters table refreshes
+// only on saves, so a DB-reading mind perceives its bodies minutes late;
+// this answers from live memory. Batched on purpose: the console client
+// paces commands a second apart, so a 25-persona roster queried one name at
+// a time cost 25 seconds per tick - one roundtrip now carries them all.
+// Offline names answer too, so the caller never has to guess at silence.
+bool ChatHandler::HandleConductStatusCommand(char* args)
+{
+    uint32 answered = 0;
+    while (char* name = ExtractLiteralArg(&args))
+    {
+        std::string norm = name;
+        if (!normalizePlayerName(norm))
+            continue;
+        ++answered;
+        Player* who = sObjectMgr.GetPlayer(norm.c_str());
+        if (!who || !who->IsInWorld())
+        {
+            PSendSysMessage("CONDUCT %s offline", norm.c_str());
+            continue;
+        }
+        std::ostringstream out;
+        out << "CONDUCT " << who->GetName()
+            << " lvl=" << uint32(who->GetLevel())
+            << " xp=" << who->GetUInt32Value(PLAYER_XP)
+            << " map=" << who->GetMapId() << " zone=" << who->GetZoneId()
+            << " x=" << int32(who->GetPositionX()) << " y=" << int32(who->GetPositionY())
+            << " combat=" << (who->IsInCombat() ? 1 : 0)
+            << " dead=" << (who->IsAlive() ? 0 : 1)
+            << " quests=";
+        bool first = true;
+        for (uint8 slot = 0; slot < MAX_QUEST_LOG_SIZE; ++slot)
+        {
+            uint32 qid = who->GetQuestSlotQuestId(slot);
+            if (!qid)
+                continue;
+            QuestStatus qs = who->GetQuestStatus(qid);
+            if (!first) out << ",";
+            first = false;
+            out << qid << ":" << uint32(qs);
+            if (who->GetQuestRewardStatus(qid)) out << "r";
+        }
+        SendSysMessage(out.str().c_str());
+    }
+    if (!answered)
+    {
+        SendSysMessage("usage: conduct status <name> [name...]");
+        SetSentErrorMessage(true);
+        return false;
+    }
+    return true;
+}
+
 bool ChatHandler::HandleCameraWatchCommand(char* args)
 {
     Player* spectator = nullptr;
