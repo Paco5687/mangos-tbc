@@ -298,6 +298,13 @@ ChatCommand* ChatHandler::getCommandTable()
     // keystrokes, no /follow, and the spectator's body is parked underground
     // out of frame, which client-side GM invisibility can never achieve
     // (a client always renders its own character).
+    static ChatCommand conductCommandTable[] =
+    {
+        { "status",         SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleConductStatusCommand,       "", nullptr },
+        { "summon",         SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleConductSummonCommand,       "", nullptr },
+        { nullptr,          0,                  false, nullptr,                                        "", nullptr }
+    };
+
     static ChatCommand cameraCommandTable[] =
     {
         { "watch",          SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleCameraWatchCommand,         "", nullptr },
@@ -977,6 +984,7 @@ ChatCommand* ChatHandler::getCommandTable()
         { "debug",          SEC_MODERATOR,      true,  nullptr,                                        "", debugCommandTable    },
         { "event",          SEC_GAMEMASTER,     false, nullptr,                                        "", eventCommandTable    },
         { "camera",         SEC_ADMINISTRATOR,  true,  nullptr,                                        "", cameraCommandTable   },
+        { "conduct",        SEC_ADMINISTRATOR,  true,  nullptr,                                        "", conductCommandTable  },
         { "gm",             SEC_ADMINISTRATOR,  true,  nullptr,                                        "", gmCommandTable       },
         { "honor",          SEC_GAMEMASTER,     false, nullptr,                                        "", honorCommandTable    },
         { "go",             SEC_MODERATOR,      false, nullptr,                                        "", goCommandTable       },

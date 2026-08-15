@@ -356,6 +356,8 @@ class ChatHandler
         bool HandleGMMountUpCommand(char* args);
         bool HandleGMVisibleCommand(char* args);
         bool HandleCameraWatchCommand(char* args);
+        bool HandleConductStatusCommand(char* args);
+        bool HandleConductSummonCommand(char* args);
         bool HandleCameraResetCommand(char* args);
 
         bool HandleGoCommand(char* args);

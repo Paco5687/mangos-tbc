@@ -2320,6 +2320,54 @@ bool ChatHandler::HandleConductStatusCommand(char* args)
     return true;
 }
 
+bool ChatHandler::HandleConductSummonCommand(char* args)
+{
+    // conduct summon <stranded> <anchor>: bring a group member to the
+    // group's side, the way a warlock or meeting stone would. The verb
+    // refuses anything a summoning party could not do: the two must share
+    // a group, the summoned must be alive and out of combat, and nobody
+    // gets pulled onto a moving boat or into mid-air taxi flight.
+    Player* target = nullptr;
+    if (!ExtractPlayerTarget(&args, &target))
+        return false;
+    Player* dest = nullptr;
+    if (!ExtractPlayerTarget(&args, &dest))
+        return false;
+    if (target == dest)
+    {
+        SendSysMessage("CONDUCT summon: cannot summon a player to themselves");
+        SetSentErrorMessage(true);
+        return false;
+    }
+    if (!target->GetGroup() || target->GetGroup() != dest->GetGroup())
+    {
+        PSendSysMessage("CONDUCT summon: %s and %s are not in the same group",
+                        target->GetName(), dest->GetName());
+        SetSentErrorMessage(true);
+        return false;
+    }
+    if (!target->IsAlive() || target->IsInCombat())
+    {
+        PSendSysMessage("CONDUCT summon: %s is %s", target->GetName(),
+                        target->IsAlive() ? "in combat" : "dead");
+        SetSentErrorMessage(true);
+        return false;
+    }
+    if (dest->IsTaxiFlying() || dest->GetTransport() || !dest->IsAlive())
+    {
+        PSendSysMessage("CONDUCT summon: %s cannot anchor a summon right now",
+                        dest->GetName());
+        SetSentErrorMessage(true);
+        return false;
+    }
+    target->TeleportTo(dest->GetMapId(),
+                       dest->GetPositionX() + 1.5f, dest->GetPositionY() + 1.5f,
+                       dest->GetPositionZ() + 0.5f,
+                       dest->GetOrientation());
+    PSendSysMessage("CONDUCT summon: %s -> %s", target->GetName(), dest->GetName());
+    return true;
+}
+
 bool ChatHandler::HandleCameraWatchCommand(char* args)
 {
     Player* spectator = nullptr;
