@@ -121,6 +121,13 @@ namespace VMAP
 
     bool VMapManager2::_loadMap(unsigned int mapId, const std::string& basePath, uint32 tileX, uint32 tileY)
     {
+        // Tile load/unload mutate StaticMapTree's internal hashtables and can
+        // even delete the tree - and PlayerBots pathfinding threads call
+        // loadMap concurrently with the world thread's terrain cleanup
+        // unloads. Both 2026-08-18/19 segfault cores died inside these
+        // hashtables, one thread per side of the race. The mutex must cover
+        // the whole mutation, not just the tree-pointer swap.
+        std::lock_guard<std::mutex> lock(m_vmStaticMapMutex);
         InstanceTreeMap::iterator instanceTree = iInstanceMapTrees.find(mapId);
         if (instanceTree == iInstanceMapTrees.end())
         {
@@ -140,11 +147,8 @@ namespace VMAP
                 return false;
             }
 
-            // insert new data
-            {
-                std::lock_guard<std::mutex> lock(m_vmStaticMapMutex);
-                instanceTree->second = newTree;
-            }
+            // insert new data (outer lock already held)
+            instanceTree->second = newTree;
         }
         return instanceTree->second->LoadMapTile(tileX, tileY, this);
     }
@@ -153,6 +157,7 @@ namespace VMAP
 
     void VMapManager2::unloadMap(unsigned int pMapId)
     {
+        std::lock_guard<std::mutex> lock(m_vmStaticMapMutex);
         InstanceTreeMap::iterator instanceTree = iInstanceMapTrees.find(pMapId);
         if (instanceTree != iInstanceMapTrees.end() && instanceTree->second)
         {
@@ -169,6 +174,7 @@ namespace VMAP
 
     void VMapManager2::unloadMap(unsigned int  pMapId, int x, int y)
     {
+        std::lock_guard<std::mutex> lock(m_vmStaticMapMutex);
         InstanceTreeMap::iterator instanceTree = iInstanceMapTrees.find(pMapId);
         if (instanceTree != iInstanceMapTrees.end() && instanceTree->second)
         {
