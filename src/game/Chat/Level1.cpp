@@ -17,6 +17,12 @@
  */
 
 #include "Common.h"
+#ifdef ENABLE_PLAYERBOTS
+#include "playerbot/playerbot.h"
+#include "playerbot/TravelMgr.h"
+#include "playerbot/strategy/values/TravelValues.h"
+#endif
+
 #include "Database/DatabaseEnv.h"
 #include "Server/WorldPacket.h"
 #include "Server/DBCStores.h"
@@ -2317,6 +2323,58 @@ bool ChatHandler::HandleConductStatusCommand(char* args)
         SetSentErrorMessage(true);
         return false;
     }
+    return true;
+}
+
+bool ChatHandler::HandleConductProbeCommand(char* args)
+{
+    // conduct probe <name>: the bot's brain on one line - live strategies,
+    // quest focus, and what its travel target believes it is doing. Built
+    // for the Torvald-class dawdle (focused bot that never departs): the
+    // console could issue orders but never SEE the mind, so every travel
+    // bug was diagnosed by staring at coordinates. See epic #61.
+    Player* who = nullptr;
+    if (!ExtractPlayerTarget(&args, &who))
+        return false;
+#ifdef ENABLE_PLAYERBOTS
+    PlayerbotAI* botAi = who->GetPlayerbotAI();
+    if (!botAi)
+    {
+        PSendSysMessage("PROBE %s: no bot ai", who->GetName());
+        return true;
+    }
+    AiObjectContext* ctx = botAi->GetAiObjectContext();
+    std::ostringstream out;
+    out << "PROBE " << who->GetName() << " nc=";
+    bool first = true;
+    for (auto& strat : botAi->GetStrategies(BotState::BOT_STATE_NON_COMBAT))
+    {
+        out << (first ? "" : ",") << strat;
+        first = false;
+    }
+    out << " focus=";
+    first = true;
+    for (uint32 qid : ctx->GetValue<ai::focusQuestTravelList>("focus travel target")->Get())
+    {
+        out << (first ? "" : ",") << qid;
+        first = false;
+    }
+    if (first) out << "none";
+    ai::TravelTarget* target = ctx->GetValue<ai::TravelTarget*>("travel target")->Get();
+    if (!target || !target->GetDestination())
+        out << " target=NONE";
+    else
+        out << " target=\"" << target->GetDestination()->GetTitle() << "\""
+            << " status=" << int(target->GetStatus())
+            << " state=" << int(target->GetTravelState())
+            << " active=" << (target->IsActive() ? 1 : 0)
+            << " timeleft=" << target->GetTimeLeft() / 1000 << "s"
+            << " retries=" << target->GetRetryCount(true)
+            << "/" << target->GetRetryCount(false);
+    SendSysMessage(out.str().c_str());
+#else
+    SendSysMessage("PROBE: playerbots not built in");
+#endif
     return true;
 }
 

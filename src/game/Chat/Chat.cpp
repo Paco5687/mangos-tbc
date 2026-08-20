@@ -302,6 +302,7 @@ ChatCommand* ChatHandler::getCommandTable()
     {
         { "status",         SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleConductStatusCommand,       "", nullptr },
         { "summon",         SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleConductSummonCommand,       "", nullptr },
+        { "probe",          SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleConductProbeCommand,        "", nullptr },
         { nullptr,          0,                  false, nullptr,                                        "", nullptr }
     };
 
